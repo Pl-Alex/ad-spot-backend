@@ -17,12 +17,15 @@ export const getOne = async (req, res) => {
   try {
     const adId = req.params.id;
 
-    const ad = await AdModel.findByIdAndUpdate(adId)
+    const ad = await AdModel.findById(adId)
       .populate("user_id")
       .populate("category");
 
     if (!ad) {
       return res.status(404).json({ message: "Ad not found" });
+    }
+    if (!ad.active) {
+      return res.status(404).json({ message: "Ad is no longer available" });
     }
 
     res.json(ad);
