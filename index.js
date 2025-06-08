@@ -49,6 +49,7 @@ app.get("/categories", CategoryController.getAll);
 // Ads
 app.get("/ads", AdController.getAll);
 app.get("/ads/:id", AdController.getOne);
+app.get("/ads/user/my", checkAuth, AdController.getUserAds);
 app.post(
   "/ads",
   checkAuth,
@@ -63,6 +64,7 @@ app.patch(
   handleValidationErrors,
   AdController.update
 );
+app.patch("/ads/:id/toggle", checkAuth, AdController.toggleStatus);
 app.delete("/ads/:id", checkAuth, AdController.remove);
 
 app.listen(process.env.PORT || 4444, (err) => {
