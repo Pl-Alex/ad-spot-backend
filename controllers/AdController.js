@@ -8,6 +8,7 @@ export const getAll = async (req, res) => {
       maxPrice,
       location,
       search,
+      sortBy = "newest",
       page = 1,
       limit = 10,
     } = req.query;
@@ -20,6 +21,7 @@ export const getAll = async (req, res) => {
       if (minPrice) filter.price.$gte = parseFloat(minPrice);
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
     }
+
     if (location) filter.location = { $regex: location, $options: "i" };
     if (search) {
       filter.$or = [
@@ -28,12 +30,33 @@ export const getAll = async (req, res) => {
       ];
     }
 
+    let sortOptions = {};
+    switch (sortBy) {
+      case "newest":
+        sortOptions = { createdAt: -1 };
+        break;
+      case "oldest":
+        sortOptions = { createdAt: 1 };
+        break;
+      case "price-low":
+        sortOptions = { price: 1 };
+        break;
+      case "price-high":
+        sortOptions = { price: -1 };
+        break;
+      case "title":
+        sortOptions = { title: 1 };
+        break;
+      default:
+        sortOptions = { createdAt: -1 };
+    }
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const ads = await AdModel.find(filter)
-      .populate("user_id")
-      .populate("category")
-      .sort({ createdAt: -1 })
+      .populate("user_id", "fullName avatarUrl")
+      .populate("category", "name")
+      .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit))
       .exec();

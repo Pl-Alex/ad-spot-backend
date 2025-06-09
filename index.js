@@ -3,6 +3,9 @@ import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
 
 import {
   registerValidation,
@@ -11,6 +14,7 @@ import {
 } from "./validations.js";
 
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
+import { upload } from "./utils/upload.js";
 
 import {
   UserController,
@@ -25,31 +29,92 @@ mongoose
 
 const app = express();
 
-app.use(express.json());
-app.use(cors());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
-// Authentication;
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    message: "Too many requests from this IP, please try again later.",
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    message: "Too many authentication attempts, please try again later.",
+  },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: {
+    message: "Too many uploads, please try again later.",
+  },
+});
+
+app.use(limiter);
+
+app.use(mongoSanitize());
+
+app.use(express.json({ limit: "10mb" }));
+
+app.use(
+  cors({
+    credentials: true,
+  })
+);
+
+app.use("/uploads", express.static("uploads"));
+
 app.post(
   "/auth/login",
+  authLimiter,
   loginValidation,
   handleValidationErrors,
   UserController.login
 );
 app.post(
   "/auth/register",
+  authLimiter,
   registerValidation,
   handleValidationErrors,
   UserController.register
 );
 app.get("/auth/me", checkAuth, UserController.getMe);
 
-// Categories
+app.post(
+  "/upload/photos",
+  uploadLimiter,
+  checkAuth,
+  upload.array("photos", 5),
+  (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const photoUrls = req.files.map(
+        (file) => `/uploads/ads/${file.filename}`
+      );
+      res.json({ photos: photoUrls });
+    } catch (error) {
+      res.status(500).json({ message: "Photo upload failed" });
+    }
+  }
+);
+
 app.get("/categories", CategoryController.getAll);
 
-// Ads
+app.get("/ads/user/my", checkAuth, AdController.getUserAds);
 app.get("/ads", AdController.getAll);
 app.get("/ads/:id", AdController.getOne);
-app.get("/ads/user/my", checkAuth, AdController.getUserAds);
 app.post(
   "/ads",
   checkAuth,
@@ -57,6 +122,7 @@ app.post(
   handleValidationErrors,
   AdController.create
 );
+app.patch("/ads/:id/toggle", checkAuth, AdController.toggleStatus);
 app.patch(
   "/ads/:id",
   checkAuth,
@@ -64,8 +130,16 @@ app.patch(
   handleValidationErrors,
   AdController.update
 );
-app.patch("/ads/:id/toggle", checkAuth, AdController.toggleStatus);
 app.delete("/ads/:id", checkAuth, AdController.remove);
+
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+app.use((error, req, res, next) => {
+  console.error(error);
+  res.status(500).json({ message: "Internal server error" });
+});
 
 app.listen(process.env.PORT || 4444, (err) => {
   if (err) {
