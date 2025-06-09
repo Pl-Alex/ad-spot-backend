@@ -132,11 +132,7 @@ app.patch(
 );
 app.delete("/ads/:id", checkAuth, AdController.remove);
 
-<<<<<<< HEAD
 app.use((req, res) => {
-=======
-app.use("*", (req, res) => {
->>>>>>> e15fcf59dbe16822d424596161635661a8b9ac2a
   res.status(404).json({ message: "Route not found" });
 });
 
