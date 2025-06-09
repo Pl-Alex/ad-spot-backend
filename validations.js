@@ -11,23 +11,27 @@ export const registerValidation = [
 
 export const loginValidation = [
   body("email", "Invalid email format").isEmail(),
-  body("password", "Password must be at least 5 characters").isLength({
-    min: 5,
-  }),
+  body("password", "Password must be at least 5 characters")
+    .isLength({
+      min: 5,
+    })
+    .escape(),
 ];
 
 export const adCreateValidation = [
   body("title", "Title is required and must be between 3 and 100 characters")
     .isString()
     .isLength({ min: 3, max: 100 })
-    .trim(),
+    .trim()
+    .escape(),
   body(
     "description",
     "Description is required and must be between 10 and 2000 characters"
   )
     .isString()
     .isLength({ min: 10, max: 2000 })
-    .trim(),
+    .trim()
+    .escape(),
   body(
     "price",
     "Price must be a number greater than 0 and less than 1,000,000"
@@ -38,7 +42,8 @@ export const adCreateValidation = [
   )
     .isString()
     .isLength({ min: 2, max: 100 })
-    .trim(),
+    .trim()
+    .escape(),
   body("category", "Category is required and must be a valid ID").custom(
     (value) => {
       if (!mongoose.Types.ObjectId.isValid(value)) {
@@ -47,24 +52,5 @@ export const adCreateValidation = [
       return true;
     }
   ),
-  body("photos", "Photos must be an array of valid URLs")
-    .optional()
-    .isArray({ max: 10 })
-    .custom((photos) => {
-      if (photos && photos.length > 0) {
-        for (const photo of photos) {
-          if (typeof photo !== "string" || photo.length > 500) {
-            throw new Error(
-              "Each photo URL must be a string with max 500 characters"
-            );
-          }
-          try {
-            new URL(photo);
-          } catch {
-            throw new Error("Invalid photo URL format");
-          }
-        }
-      }
-      return true;
-    }),
+  body("photos", "Photos must be an array").optional().isArray({ max: 5 }),
 ];

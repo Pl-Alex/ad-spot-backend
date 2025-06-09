@@ -6,6 +6,13 @@ export default (req, res, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      if (decoded.exp < Date.now() / 1000) {
+        return res.status(401).json({
+          message: "Token expired",
+        });
+      }
+
       req.userId = decoded.userId;
       next();
     } catch (e) {
