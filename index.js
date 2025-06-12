@@ -5,7 +5,6 @@ import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import mongoSanitize from "express-mongo-sanitize";
 
 import {
   registerValidation,
@@ -37,7 +36,7 @@ app.use(
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 100000,
   message: {
     message: "Too many requests from this IP, please try again later.",
   },
@@ -45,7 +44,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 50,
   message: {
     message: "Too many authentication attempts, please try again later.",
   },
@@ -53,7 +52,7 @@ const authLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 200,
   message: {
     message: "Too many uploads, please try again later.",
   },
@@ -61,15 +60,9 @@ const uploadLimiter = rateLimit({
 
 app.use(limiter);
 
-app.use(mongoSanitize());
-
 app.use(express.json({ limit: "10mb" }));
 
-app.use(
-  cors({
-    credentials: true,
-  })
-);
+app.use(cors());
 
 app.use("/uploads", express.static("uploads"));
 

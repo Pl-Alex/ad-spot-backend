@@ -4,8 +4,33 @@ import Ad from "../models/Ad.js";
 import User from "../models/User.js";
 import Category from "../models/Category.js";
 import { sampleAds } from "./ads.js";
+import {
+  sampleImageUrls,
+  ensureUploadsDir,
+  generateUniqueFilename,
+  downloadImage,
+} from "./sampleImages.js";
 
 dotenv.config();
+
+const downloadImages = async () => {
+  const uploadsDir = ensureUploadsDir();
+  const images = {};
+
+  for (const [category, urls] of Object.entries(sampleImageUrls)) {
+    images[category] = [];
+
+    for (const url of urls) {
+      const filename = generateUniqueFilename();
+      const saved = await downloadImage(url, filename, uploadsDir);
+      if (saved) {
+        images[category].push(saved);
+      }
+    }
+  }
+
+  return images;
+};
 
 const seedAds = async () => {
   try {
@@ -23,10 +48,12 @@ const seedAds = async () => {
       categoryMap[cat.name] = cat._id;
     });
 
-    await Ad.deleteMany({});
-    await Ad.insertMany(sampleAds(user._id, categoryMap));
+    const images = await downloadImages();
 
-    console.log("Sample seeded.");
+    await Ad.deleteMany({});
+    await Ad.insertMany(sampleAds(user._id, categoryMap, images));
+
+    console.log("Ads with images seeded successfully");
     process.exit();
   } catch (err) {
     console.error("Error seeding:", err.message);

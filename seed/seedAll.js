@@ -2,19 +2,33 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import User from "../models/User.js";
+import Category from "../models/Category.js";
+import Ad from "../models/Ad.js";
+import { defaultCategories } from "./categories.js";
+import { generateAds } from "./ads.js";
 
 dotenv.config();
 
-const seedUsers = async () => {
+const seedAll = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
 
-    await User.deleteMany({});
+    await Promise.all([
+      User.deleteMany({}),
+      Category.deleteMany({}),
+      Ad.deleteMany({}),
+    ]);
+
+    const categories = await Category.insertMany(defaultCategories);
+    const categoryMap = {};
+    categories.forEach((cat) => {
+      categoryMap[cat.name] = cat._id;
+    });
 
     const password = "password123";
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const users = [
+    const users = await User.insertMany([
       {
         fullName: "Anna Kowalska",
         email: "anna.kowalska@example.com",
@@ -64,16 +78,18 @@ const seedUsers = async () => {
         avatarUrl:
           "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face",
       },
-    ];
+    ]);
 
-    const insertedUsers = await User.insertMany(users);
-
-    console.log("Seeded ${insertedUsers.length} users (password: ${password})");
+    const adsToInsert = generateAds(users, categoryMap);
+    const ads = await Ad.insertMany(adsToInsert);
+    console.log(
+      `Seeded ${users.length} users, ${categories.length} categories, and ${ads.length} ads with photos`
+    );
     process.exit();
   } catch (err) {
-    console.error("Error seeding users:", err.message);
+    console.error("Error seeding database:", err.message);
     process.exit(1);
   }
 };
 
-seedUsers();
+seedAll();
